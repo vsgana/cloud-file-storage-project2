@@ -1,0 +1,80 @@
+import json
+import boto3
+import base64
+import hmac
+import hashlib
+
+# --- Cognito Config ---
+USER_POOL_ID = ""
+CLIENT_ID = ""
+CLIENT_SECRET = ""
+
+client = boto3.client("cognito-idp")
+
+# --- Helper: Generate secret hash ---
+def get_secret_hash(username):
+    msg = username + CLIENT_ID
+    dig = hmac.new(CLIENT_SECRET.encode("utf-8"), msg.encode("utf-8"), hashlib.sha256).digest()
+    return base64.b64encode(dig).decode()
+
+def lambda_handler(event, context):
+    try:
+        # --- 1️⃣ Parse incoming request ---
+        raw_body = event.get("body", "{}")
+        if isinstance(raw_body, str):
+            try:
+                body = json.loads(raw_body)
+            except json.JSONDecodeError:
+                body = {}
+        else:
+            body = raw_body
+
+        # --- 2️⃣ Get refresh token ---
+        refresh_token = body.get("refreshToken", "").strip()
+        username = body.get("username", "").strip()  # Required for secret hash
+
+        if not refresh_token or not username:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "refreshToken and username are required"})
+            }
+
+        # --- 3️⃣ Call Cognito to refresh tokens ---
+        response = client.initiate_auth(
+            AuthFlow="REFRESH_TOKEN_AUTH",
+            AuthParameters={
+                "REFRESH_TOKEN": refresh_token,
+                "SECRET_HASH": get_secret_hash(username)
+            },
+            ClientId=CLIENT_ID
+        )
+
+        # --- 4️⃣ Return new tokens ---
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Credentials": "true"
+            },
+            "body": json.dumps({
+                "message": "Tokens refreshed successfully",
+                "idToken": response["AuthenticationResult"]["IdToken"],
+                "accessToken": response["AuthenticationResult"]["AccessToken"]
+            })
+        }
+
+    except client.exceptions.NotAuthorizedException:
+        return {
+            "statusCode": 401,
+            "body": json.dumps({"message": "Invalid or expired refresh token"})
+        }
+
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "body": json.dumps({
+                "message": "Token refresh failed",
+                "error": str(e)
+            })
+        }
+
