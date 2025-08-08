@@ -1,0 +1,28 @@
+import json
+
+def lambda_handler(event, context):
+    user_id = event['queryStringParameters'].get('userId')
+    file_name = event['queryStringParameters'].get('fileName')
+
+    if not user_id or not file_name:
+        return {
+            "statusCode": 400,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",  # Allow from any origin
+                "Access-Control-Allow-Headers": "*"
+            },
+            "body": json.dumps({"error": "Missing userId or fileName"})
+        }
+
+    url = generate_presigned_url(user_id, file_name)
+
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",  # Allow from any origin
+            "Access-Control-Allow-Headers": "*"
+        },
+        "body": json.dumps({"shareUrl": url})
+    }
