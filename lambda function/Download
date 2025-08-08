@@ -1,0 +1,70 @@
+import json
+import boto3
+import base64
+
+s3 = boto3.client('s3')
+cognito = boto3.client('cognito-idp')
+
+BUCKET_NAME = ""
+
+def lambda_handler(event, context):
+    try:
+        # Get access token
+        body = json.loads(event.get("body", "{}"))
+        access_token = body.get("accessToken")
+        file_name = body.get("fileName")
+
+        if not access_token or not file_name:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "Access token and fileName are required"})
+            }
+
+        # Get Cognito user
+        user_info = cognito.get_user(AccessToken=access_token)
+        user_id = None
+        for attr in user_info["UserAttributes"]:
+            if attr["Name"] == "sub":
+                user_id = attr["Value"]
+                break
+
+        if not user_id:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "User ID not found"})
+            }
+
+        # S3 key
+        s3_key = f"{user_id}/{file_name}"
+
+        # Download from S3
+        s3_object = s3.get_object(Bucket=BUCKET_NAME, Key=s3_key)
+        file_content_bytes = s3_object["Body"].read()
+
+        try:
+            # Try decoding as UTF-8 text
+            file_content_text = file_content_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            # If not text, still return Base64 as fallback
+            file_content_text = base64.b64encode(file_content_bytes).decode("utf-8")
+
+        return {
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({
+                "message": "File downloaded successfully",
+                "fileName": file_name,
+                "fileContent": file_content_text
+            })
+        }
+
+    except cognito.exceptions.NotAuthorizedException:
+        return {
+            "statusCode": 401,
+            "body": json.dumps({"message": "Invalid or expired access token"})
+        }
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"message": "Download failed", "error": str(e)})
+        }
