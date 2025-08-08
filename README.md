@@ -4,6 +4,7 @@ Cloud-Based File Storage System with Role-Based Access
 This project is a secure, scalable cloud-based file storage and sharing system built on AWS services.
 It allows users to upload, download, move, share, and manage files with role-based access control.
 The system is designed to ensure data security, versioning, and fine-grained permissions for different user roles.
+
 ---
 🚀 Features
 User Authentication – AWS Cognito handles sign-up, sign-in, and session management.
