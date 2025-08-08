@@ -1,0 +1,74 @@
+import json
+import boto3
+import os
+from botocore.exceptions import ClientError
+
+# AWS Clients
+s3_client = boto3.client('s3')
+cognito_client = boto3.client('cognito-idp')
+dynamodb_client = boto3.client('dynamodb')
+
+# Config
+BUCKET_NAME = ""
+DYNAMODB_TABLE = ""
+
+def lambda_handler(event, context):
+    try:
+        # Read request body
+        body = json.loads(event.get('body', '{}'))
+        access_token = body.get('accessToken')
+
+        if not access_token:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "accessToken is required"})
+            }
+
+        # Get username (Cognito sub)
+        try:
+            user_info = cognito_client.get_user(AccessToken=access_token)
+        except ClientError as e:
+            return {
+                "statusCode": 401,
+                "body": json.dumps({"message": "Unauthorized", "error": str(e)})
+            }
+
+        username = None
+        for attr in user_info["UserAttributes"]:
+            if attr["Name"] == "sub":
+                username = attr["Value"]
+                break
+
+        if not username:
+            return {
+                "statusCode": 500,
+                "body": json.dumps({"message": "Could not get username from token"})
+            }
+
+        # Fetch file metadata from DynamoDB
+        response = dynamodb_client.query(
+            TableName=DYNAMODB_TABLE,
+            KeyConditionExpression="userId = :uid",
+            ExpressionAttributeValues={":uid": {"S": username}}
+        )
+
+        files = []
+        for item in response.get("Items", []):
+            files.append({
+                "fileName": item.get("fileName", {}).get("S", ""),
+                "s3Key": item.get("s3Key", {}).get("S", "")
+            })
+
+        return {
+            "statusCode": 200,
+            "body": json.dumps({
+                "message": "Files retrieved successfully",
+                "files": files
+            })
+        }
+
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"message": "Error retrieving files", "error": str(e)})
+        }
