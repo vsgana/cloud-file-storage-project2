@@ -1,0 +1,54 @@
+import json
+import boto3
+
+# Cognito configuration
+USER_POOL_ID = ""
+CLIENT_ID = ""
+CLIENT_SECRET = ""
+
+client = boto3.client("cognito-idp")
+
+def lambda_handler(event, context):
+    try:
+        # Get headers safely (AWS sends lowercase keys sometimes)
+        headers = event.get("headers") or {}
+        # Normalize header keys to lowercase for consistent access
+        headers = {k.lower(): v for k, v in headers.items()}
+
+        # Get Authorization header
+        auth_header = headers.get("authorization")
+        if not auth_header:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "Authorization header is required"})
+            }
+
+        # Remove "Bearer " prefix if present
+        if auth_header.lower().startswith("bearer "):
+            access_token = auth_header[7:]
+        else:
+            access_token = auth_header
+
+        # Call Cognito global sign out
+        client.global_sign_out(AccessToken=access_token)
+
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Credentials": "true"
+            },
+            "body": json.dumps({"message": "Logout successful"})
+        }
+
+    except client.exceptions.NotAuthorizedException:
+        return {
+            "statusCode": 401,
+            "body": json.dumps({"message": "Invalid or expired token"})
+        }
+
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"message": "Logout failed", "error": str(e)})
+        }
