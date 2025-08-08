@@ -28,6 +28,23 @@ Scalable & Serverless – Powered by AWS Lambda, S3, Cognito, DynamoDB, and API 
 Logging & Monitoring – CloudWatch logs for debugging and performance monitoring.
 
 ---
+
+## 🛠️ Tech Stack  
+
+| Service / Tool         | Purpose                                  |
+|------------------------|------------------------------------------|
+| AWS S3                 | File storage (with versioning)           |
+| AWS Lambda             | Backend logic for file operations        |
+| AWS API Gateway        | Expose APIs to frontend                   |
+| AWS Cognito            | Authentication & Authorization           |
+| AWS DynamoDB           | Store metadata and permissions           |
+| AWS IAM                | Role-based access policies               |
+| CloudWatch             | Logging and monitoring                   |
+| JavaScript / TypeScript| Backend & API integration                 |
+| React (optional)       | Frontend file management UI               |
+
+---
+
 📂 Project Structure
 ```bash
 cloud-file-storage/
@@ -49,6 +66,7 @@ cloud-file-storage/
 ---
 
 ⚙️ Deployment
+
 1️⃣ Prerequisites
 AWS account
 
@@ -57,6 +75,7 @@ Node.js installed
 AWS CLI configured with credentials
 
 GitHub repository for version control
+
 2️⃣ Setup
 1.Clone the repository
 ```bash
@@ -80,8 +99,8 @@ Connect endpoints to Lambda functions
 4.Set Environment Variables
 
 BUCKET_NAME
-
 DYNAMO_TABLE
+
 ---
 ## 📌 API Endpoints  
 
