@@ -29,7 +29,7 @@ Logging & Monitoring – CloudWatch logs for debugging and performance monitorin
 
 ---
 📂 Project Structure
-'''
+```bash
 cloud-file-storage/
 │
 ├── lambda-functions/
@@ -45,5 +45,54 @@ cloud-file-storage/
 │
 ├── README.md
 └── package.json
-'''
+```
+---
+
+⚙️ Deployment
+1️⃣ Prerequisites
+AWS account
+
+Node.js installed
+
+AWS CLI configured with credentials
+
+GitHub repository for version control
+2️⃣ Setup
+1.Clone the repository
+```bash
+git clone https://github.com/yourusername/cloud-file-storage.git
+cd cloud-file-storage
+```
+2.Deploy Lambda functions
+
+Create a Lambda function in AWS
+
+Upload the respective .js files from lambda-functions/
+
+Attach IAM role with relevant policy (policies/moveFilePolicy.json)
+
+3.Configure API Gateway
+
+Create REST API
+
+Connect endpoints to Lambda functions
+
+4.Set Environment Variables
+
+BUCKET_NAME
+
+DYNAMO_TABLE
+---
+## 📌 API Endpoints  
+
+| Method | Endpoint    | Description                  |
+|--------|------------|------------------------------|
+| POST   | `/signup`  | User registration            |
+| POST   | `/signin`  | User login                   |
+| GET    | `/profile` | Fetch user profile           |
+| POST   | `/upload`  | Upload file                  |
+| POST   | `/move`    | Move or rename file          |
+| POST   | `/share`   | Share file with another
+
+
 
