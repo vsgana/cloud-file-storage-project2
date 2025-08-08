@@ -1,0 +1,28 @@
+// Example upload handler
+const AWS = require('aws-sdk');
+const s3 = new AWS.S3();
+
+const uploadFile = async (req, res) => {
+  const { fileName, fileContent } = req.body; // Assume fileContent is base64 or buffer
+
+  const params = {
+    Bucket: '',
+    Key: fileName,
+    Body: Buffer.from(fileContent, 'base64'),
+    ContentType: 'application/pdf', // Adjust based on file type
+    ACL: 'public-read', // This is IMPORTANT to make it public
+  };
+
+  try {
+    await s3.putObject(params).promise();
+
+    const s3Url = `https://${params.Bucket}.s3.ap-south-1.amazonaws.com/${params.Key}`;
+
+    return res.status(200).json({
+      message: 'File uploaded successfully',
+      fileUrl: s3Url, // ✅ Send back this link
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
