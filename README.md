@@ -27,3 +27,23 @@ Scalable & Serverless – Powered by AWS Lambda, S3, Cognito, DynamoDB, and API 
 
 Logging & Monitoring – CloudWatch logs for debugging and performance monitoring.
 
+---
+📂 Project Structure
+'''
+cloud-file-storage/
+│
+├── lambda-functions/
+│   ├── moveFile/
+│   │   └── moveFile.js
+│   └── ...
+│
+├── policies/
+│   └── moveFilePolicy.json
+│
+├── frontend/
+│   └── (React or JS frontend code)
+│
+├── README.md
+└── package.json
+'''
+
