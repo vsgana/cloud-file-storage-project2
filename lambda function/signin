@@ -1,0 +1,133 @@
+import json
+import boto3
+import base64
+import hmac
+import hashlib
+import os
+
+USER_POOL_ID = os.environ.get('")
+CLIENT_ID = os.environ.get('")
+CLIENT_SECRET = os.environ.get('")
+
+client = boto3.client('cognito-idp')
+
+def get_secret_hash(username):
+    msg = username + CLIENT_ID
+    dig = hmac.new(CLIENT_SECRET.encode('utf-8'), msg.encode('utf-8'), hashlib.sha256).digest()
+    return base64.b64encode(dig).decode()
+
+def lambda_handler(event, context):
+    body = json.loads(event.get('body', '{}'))
+
+    email = body.get('email')
+    password = body.get('password')
+    new_password = body.get('newPassword')  # Optional field only used in challenge
+
+    if not email or not password:
+        return {
+            'statusCode': 400,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Credentials': True
+            },
+            'body': json.dumps({'message': 'Email and password are required'})
+        }
+
+    try:
+        response = client.initiate_auth(
+            AuthFlow='USER_PASSWORD_AUTH',
+            AuthParameters={
+                'USERNAME': email,
+                'PASSWORD': password,
+                'SECRET_HASH': get_secret_hash(email)
+            },
+            ClientId=CLIENT_ID
+        )
+
+        if response.get('ChallengeName') == 'NEW_PASSWORD_REQUIRED':
+            if not new_password:
+                return {
+                    'statusCode': 403,
+                    'headers': {
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Credentials': True
+                    },
+                    'body': json.dumps({
+                        'message': 'NEW_PASSWORD_REQUIRED',
+                        'detail': 'User must set a new password.',
+                        'session': response['Session']
+                    })
+                }
+
+            challenge_response = client.respond_to_auth_challenge(
+                ClientId=CLIENT_ID,
+                ChallengeName='NEW_PASSWORD_REQUIRED',
+                Session=response['Session'],
+                ChallengeResponses={
+                    'USERNAME': email,
+                    'NEW_PASSWORD': new_password,
+                    'SECRET_HASH': get_secret_hash(email)
+                }
+            )
+
+            tokens = challenge_response['AuthenticationResult']
+
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Credentials': True
+                },
+                'body': json.dumps({
+                    'message': 'Password changed and login successful',
+                    'accessToken': tokens['AccessToken'],
+                    'idToken': tokens['IdToken'],
+                    'refreshToken': tokens['RefreshToken']
+                })
+            }
+
+        # Success login (no challenge)
+        tokens = response['AuthenticationResult']
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Credentials': True
+            },
+            'body': json.dumps({
+                'message': 'Login successful',
+                'accessToken': tokens['AccessToken'],
+                'idToken': tokens['IdToken'],
+                'refreshToken': tokens['RefreshToken']
+            })
+        }
+
+    except client.exceptions.NotAuthorizedException:
+        return {
+            'statusCode': 401,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Credentials': True
+            },
+            'body': json.dumps({'message': 'Incorrect username or password'})
+        }
+
+    except client.exceptions.UserNotConfirmedException:
+        return {
+            'statusCode': 403,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Credentials': True
+            },
+            'body': json.dumps({'message': 'User not confirmed'})
+        }
+
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Credentials': True
+            },
+            'body': json.dumps({'message': 'Login failed', 'error': str(e)})
+        }
