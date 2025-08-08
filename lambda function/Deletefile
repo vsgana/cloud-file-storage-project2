@@ -1,0 +1,33 @@
+import json
+import boto3
+
+s3 = boto3.client('s3')
+BUCKET_NAME = 'cloudfilestoragef13'
+
+def lambda_handler(event, context):
+    try:
+        # s3Key passed as query param: ?s3Key=user-id%2Ffilename.txt
+        s3_key = event['queryStringParameters'].get('s3Key')
+
+        if not s3_key:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "Missing s3Key"})
+            }
+
+        s3.delete_object(Bucket=BUCKET_NAME, Key=s3_key)
+
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "DELETE,OPTIONS"
+            },
+            "body": json.dumps({"message": "File deleted successfully"})
+        }
+
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": str(e)})
+        }
