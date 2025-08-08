@@ -1,0 +1,99 @@
+import json
+import boto3
+import base64
+from botocore.exceptions import ClientError
+
+# AWS clients
+s3 = boto3.client('s3')
+dynamodb = boto3.client('dynamodb')
+cognito = boto3.client('cognito-idp')
+
+BUCKET_NAME = "cloudfilestoragef13"
+TABLE_NAME = "clouddriveFileMetadata"
+
+def lambda_handler(event, context):
+    try:
+        # Get body
+        body = json.loads(event.get('body', '{}'))
+
+        # Get and validate Access Token
+        access_token = body.get("accessToken") or event.get("headers", {}).get("Authorization")
+        if not access_token:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "Access token is required"})
+            }
+
+        # Remove "Bearer " if included
+        if access_token.lower().startswith("bearer "):
+            access_token = access_token.split(" ")[1]
+
+        # Get Cognito user info
+        user_info = cognito.get_user(AccessToken=access_token)
+        user_id = None
+        for attr in user_info["UserAttributes"]:
+            if attr["Name"] == "sub":
+                user_id = attr["Value"]
+                break
+
+        if not user_id:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "Could not determine user ID"})
+            }
+
+        # Get old and new file names from body
+        old_file_name = body.get("oldFileName")
+        new_file_name = body.get("newFileName")
+
+        if not old_file_name or not new_file_name:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "Both oldFileName and newFileName are required"})
+            }
+
+        # Build S3 keys
+        old_key = f"{user_id}/{old_file_name}"
+        new_key = f"{user_id}/{new_file_name}"
+
+        # Copy file in S3
+        s3.copy_object(
+            Bucket=BUCKET_NAME,
+            CopySource={"Bucket": BUCKET_NAME, "Key": old_key},
+            Key=new_key
+        )
+
+        # Delete old file
+        s3.delete_object(Bucket=BUCKET_NAME, Key=old_key)
+
+        # Update DynamoDB metadata
+        try:
+            dynamodb.delete_item(
+                TableName=TABLE_NAME,
+                Key={"userId": {"S": user_id}, "fileName": {"S": old_file_name}}
+            )
+            dynamodb.put_item(
+                TableName=TABLE_NAME,
+                Item={
+                    "userId": {"S": user_id},
+                    "fileName": {"S": new_file_name}
+                }
+            )
+        except ClientError as e:
+            print("DynamoDB update failed:", str(e))
+
+        return {
+            "statusCode": 200,
+            "body": json.dumps({"message": "File moved successfully"})
+        }
+
+    except ClientError as e:
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"message": "Move failed", "error": str(e)})
+        }
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"message": "Unexpected error", "error": str(e)})
+        }
