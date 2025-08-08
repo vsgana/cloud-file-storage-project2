@@ -102,16 +102,25 @@ BUCKET_NAME
 DYNAMO_TABLE
 
 ---
-## 📌 API Endpoints  
+## 📌 API Endpoints
 
-| Method | Endpoint    | Description                  |
-|--------|------------|------------------------------|
-| POST   | `/signup`  | User registration            |
-| POST   | `/signin`  | User login                   |
-| GET    | `/profile` | Fetch user profile           |
-| POST   | `/upload`  | Upload file                  |
-| POST   | `/move`    | Move or rename file          |
-| POST   | `/share`   | Share file with another
+| **Category**                  | **Method** | **Endpoint**                    | **Description** |
+|--------------------------------|------------|----------------------------------|-----------------|
+| **Core User Authentication APIs** | POST       | `/signup`                        | Register a new user |
+|                                | POST       | `/login`                         | Authenticate user & return tokens |
+|                                | POST       | `/refresh-token`                 | Issue new access token using refresh token |
+|                                | POST       | `/logout`                        | Invalidate token / sign out user |
+|                                | GET        | `/me`                            | Get user profile info |
+| **File Management APIs**       | GET        | `/files`                         | List all files and folders (optionally with folder path) |
+|                                | POST       | `/upload`                        | Upload a file (multipart/form-data or presigned URL-based) |
+|                                | DELETE     | `/files/{fileId}`                 | Delete a file |
+|                                | PATCH      | `/files/{fileId}/rename`          | Rename a file |
+|                                | GET        | `/files/{fileId}/download`        | Download file (or redirect to presigned URL) |
+|                                | POST       | `/files/{fileId}/share`           | Generate pre-signed URL |
+|                                | POST       | `/folders`                        | Create a folder |
+|                                | PATCH      | `/files/{fileId}/move`            | Move file to another folder |
+
+
 
 
 
